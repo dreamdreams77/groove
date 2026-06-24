@@ -1059,6 +1059,7 @@ body:not(.perf-mode) #perf-btn{display:none}
     <button class="ctl-chip" onclick="document.getElementById('import-file').click()">⬆ Import</button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(event)">
     <button class="ctl-chip" id="export-wav-btn" onclick="exportLastRecordingAsWav()" disabled title="Record something first">⬇ WAV</button>
+    <button class="ctl-chip" onclick="exportMIDI()" title="Export current sequencer pattern as MIDI">⬇ MIDI</button>
   </div>
   <div id="rec-status" style="text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--ink3);letter-spacing:.06em;min-height:12px"></div>
   <div style="text-align:center;font-family:var(--font-mono);font-size:8px;color:var(--ink3);opacity:0.5;padding-bottom:2px;letter-spacing:.04em">Space: metronome · R: record · 1-6: switch tabs · P: perf mode</div>
@@ -2637,6 +2638,104 @@ function exportAllJSON() {
   const blob = new Blob([JSON.stringify(songs, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = 'groove-studio-all-songs.json'; a.click();
+}
+
+/* ================================================================
+   MIDI EXPORT — SMF Type 0, exports current sequencer pattern
+================================================================ */
+function exportMIDI() {
+  const bpm = +document.getElementById('bpm-slider')?.value || 120;
+  const steps = seqStepCount;
+  const TPQN = 480;
+  const ticksPerStep = TPQN / 4; // 16th note
+
+  function nameToMidi(name) {
+    const NOTE = {'C':0,'C#':1,'D':2,'D#':3,'E':4,'F':5,'F#':6,'G':7,'G#':8,'A':9,'A#':10,'B':11};
+    const m = name.match(/^([A-G]#?)(-?\d+)$/);
+    if (!m) return 60;
+    return (parseInt(m[2]) + 1) * 12 + NOTE[m[1]];
+  }
+
+  // GM drum note map for unpitched tracks
+  const DRUM_MAP = {
+    Kick:36, Snare:38, Hat:42, Ride:51, Clap:39,
+    'Open HH':46, Shuffle:44, 'Tom Hi':48, 'Tom Lo':45,
+    Crash:49, Cowbell:56, Rimshot:37, Shaker:82, Cajon:64,
+    Tambourine:54, Woodblock:76, Djembe:62, Bass:35,
+    Perc:75, FX:46, '808':35, 'Snare2':40, Blip:42, Noise:42, Arp:42,
+  };
+
+  const pitched = SEQ_PITCHED[seqMode];
+  const labels = SEQ_TRACK_LABELS[seqMode];
+  const events = [];
+
+  for (let ti = 0; ti < labels.length; ti++) {
+    for (let step = 0; step < steps; step++) {
+      const val = seqGrid[seqMode][ti][step];
+      if (!val) continue;
+      const tick = step * ticksPerStep;
+      const vel = val === 'accent' ? 110 : 80;
+
+      if (pitched[ti]) {
+        // chord track (ti===5 in jazz/synth/funk) — write a triad
+        if (ti === 5) {
+          const root = seqPitchIdx[seqMode][5];
+          [root, Math.min(SEQ_SCALE.length-1, root+2), Math.min(SEQ_SCALE.length-1, root+4)].forEach(idx => {
+            events.push({tick, ch:0, note:nameToMidi(SEQ_SCALE[idx]), vel, dur:ticksPerStep*2});
+          });
+        } else {
+          events.push({tick, ch:0, note:nameToMidi(SEQ_SCALE[seqPitchIdx[seqMode][ti]]), vel, dur:ticksPerStep*2});
+        }
+      } else {
+        events.push({tick, ch:9, note:DRUM_MAP[labels[ti]]||38, vel, dur:ticksPerStep});
+      }
+    }
+  }
+
+  events.sort((a,b) => a.tick - b.tick);
+  const msgs = [];
+  events.forEach(ev => {
+    msgs.push({tick:ev.tick,        data:[0x90|ev.ch, ev.note, ev.vel]});
+    msgs.push({tick:ev.tick+ev.dur, data:[0x80|ev.ch, ev.note, 0]});
+  });
+  msgs.push({tick:steps*ticksPerStep, data:null}); // end of track
+  msgs.sort((a,b) => a.tick - b.tick || (a.data ? 1 : -1));
+
+  function vlq(n) {
+    if (n < 128) return [n];
+    const b = []; b.unshift(n & 0x7F); n >>= 7;
+    while (n > 0) { b.unshift((n & 0x7F) | 0x80); n >>= 7; }
+    return b;
+  }
+
+  const trackBytes = [];
+  let curTick = 0;
+  msgs.forEach(m => {
+    vlq(m.tick - curTick).forEach(b => trackBytes.push(b));
+    curTick = m.tick;
+    if (m.data) m.data.forEach(b => trackBytes.push(b));
+    else [0xFF, 0x2F, 0x00].forEach(b => trackBytes.push(b));
+  });
+
+  const uspb = Math.round(60000000 / bpm);
+  const tempoBytes = [0x00,0xFF,0x51,0x03,(uspb>>16)&0xFF,(uspb>>8)&0xFF,uspb&0xFF];
+  const allTrack = [...tempoBytes, ...trackBytes];
+
+  const buf = new Uint8Array(14 + 8 + allTrack.length);
+  let pos = 0;
+  const w4 = v => { buf[pos++]=(v>>24)&0xFF; buf[pos++]=(v>>16)&0xFF; buf[pos++]=(v>>8)&0xFF; buf[pos++]=v&0xFF; };
+  const w2 = v => { buf[pos++]=(v>>8)&0xFF; buf[pos++]=v&0xFF; };
+  const wb = arr => arr.forEach(b => buf[pos++] = b);
+
+  wb([0x4D,0x54,0x68,0x64]); w4(6); w2(0); w2(1); w2(TPQN); // MThd
+  wb([0x4D,0x54,0x72,0x6B]); w4(allTrack.length); wb(allTrack); // MTrk
+
+  const blob = new Blob([buf], {type:'audio/midi'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const title = (document.getElementById('song-title')?.value || seqMode + '-groove').replace(/\s+/g,'-').toLowerCase();
+  a.href = url; a.download = title + '.mid'; a.click();
+  setStatus('MIDI exported — drop it into any DAW!');
 }
 function importJSON(event) {
   const file = event.target.files[0];
