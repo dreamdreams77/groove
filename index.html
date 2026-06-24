@@ -671,6 +671,34 @@ input[type=range].tempo-knob{width:80px}
 .seq-key-grid button{font-family:var(--font-mono);font-size:12px;padding:10px 3px;border-radius:var(--radius);
   border:1px solid var(--rail2);background:var(--panel2);color:var(--ink2);cursor:pointer}
 .seq-key-grid button.cur{border-color:var(--copper2);color:var(--copper3);box-shadow:0 0 10px rgba(232,146,58,.3) inset}
+.seq-key-grid button.dimmed{opacity:0.25}
+
+/* ── TRANSPOSE / BPM PRESETS / SCALE LOCK ── */
+.bpm-presets{display:flex;gap:3px;flex-wrap:wrap}
+.bpm-preset{font-family:var(--font-mono);font-size:9px;padding:3px 6px;border-radius:var(--radius);
+  border:1px solid var(--rail2);background:var(--panel2);color:var(--ink3);cursor:pointer;letter-spacing:.02em}
+.bpm-preset:active{background:var(--rail);color:var(--ink2)}
+.transpose-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.transpose-row span{font-family:var(--font-mono);font-size:9px;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase}
+.trans-btn{width:24px;height:24px;border-radius:var(--radius);border:1px solid var(--rail2);
+  background:var(--panel2);color:var(--ink2);font-family:var(--font-mono);font-size:13px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.trans-btn:active{background:var(--rail);transform:scale(.93)}
+.scale-lock-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.scale-lock-row span{font-family:var(--font-mono);font-size:9px;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase}
+.sl-btn{font-family:var(--font-mono);font-size:9px;padding:3px 7px;border-radius:var(--radius);
+  border:1px solid var(--rail2);background:var(--panel2);color:var(--ink3);cursor:pointer}
+.sl-btn.sel{border-color:var(--copper2);color:var(--copper3);background:rgba(232,146,58,.1)}
+
+/* ── SONG NOTES ── */
+.song-notes-wrap{padding:6px 8px 0}
+.song-notes-wrap textarea{width:100%;background:var(--panel2);border:1px solid var(--rail2);
+  color:var(--ink2);font-family:var(--font-ui);font-size:11px;border-radius:var(--radius);
+  padding:6px 8px;resize:none;height:52px;outline:none;line-height:1.4}
+.song-notes-wrap textarea:focus{border-color:var(--copper)}
+.song-notes-wrap textarea::placeholder{color:var(--ink3)}
+.song-item-notes{font-family:var(--font-ui);font-size:9px;color:var(--ink3);
+  padding:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
 
 /* ================================================================
    ACCENT CELLS — brighter, taller visual weight
@@ -997,6 +1025,28 @@ body:not(.perf-mode) #perf-btn{display:none}
         <button class="ctl-chip" id="seq-recall-btn" onclick="seqLoadGroove()" style="display:none">↺ Recall</button>
         <button class="ctl-chip" onclick="togglePerfMode()" title="Performance mode — hides controls, full screen play">⛶ Perf</button>
       </div>
+      <div class="transpose-row" style="padding:4px 0 2px">
+        <span>Transpose</span>
+        <button class="trans-btn" onclick="seqTranspose(-12)" title="Down octave">⬇</button>
+        <button class="trans-btn" onclick="seqTranspose(-1)">−</button>
+        <button class="trans-btn" onclick="seqTranspose(1)">+</button>
+        <button class="trans-btn" onclick="seqTranspose(12)" title="Up octave">⬆</button>
+        <span style="margin-left:8px">Scale</span>
+        <button class="sl-btn sel" data-sc="all" onclick="setSeqScale('all')">All</button>
+        <button class="sl-btn" data-sc="major" onclick="setSeqScale('major')">Major</button>
+        <button class="sl-btn" data-sc="minor" onclick="setSeqScale('minor')">Minor</button>
+        <button class="sl-btn" data-sc="pent" onclick="setSeqScale('pent')">Penta</button>
+        <button class="sl-btn" data-sc="dorian" onclick="setSeqScale('dorian')">Dorian</button>
+      </div>
+      <div class="bpm-presets" style="padding:2px 0 4px">
+        <span style="font-family:var(--font-mono);font-size:9px;color:var(--ink3);align-self:center;margin-right:2px">BPM</span>
+        <button class="bpm-preset" onclick="setBPMPreset(70)">70 ambient</button>
+        <button class="bpm-preset" onclick="setBPMPreset(90)">90 chill</button>
+        <button class="bpm-preset" onclick="setBPMPreset(110)">110 menu</button>
+        <button class="bpm-preset" onclick="setBPMPreset(128)">128 action</button>
+        <button class="bpm-preset" onclick="setBPMPreset(145)">145 chase</button>
+        <button class="bpm-preset" onclick="setBPMPreset(170)">170 boss</button>
+      </div>
       <div class="seq-hint" id="seq-hint">Tap squares to write a beat. Tap a row's label to change its note.</div>
 
       <div class="seq-chain-section">
@@ -1004,6 +1054,7 @@ body:not(.perf-mode) #perf-btn{display:none}
           <span class="seq-chain-title">Song chain</span>
           <button class="ctl-chip" onclick="seqAddToChain()">+ Add current pattern</button>
           <button class="ctl-chip" id="seq-chain-play-btn" onclick="toggleChainPlay()" disabled>▶ Play chain</button>
+          <button class="ctl-chip" id="chain-loop-btn" onclick="toggleChainLoop()" title="Loop chain continuously">Loop: Off</button>
           <button class="ctl-chip" onclick="seqClearChain()">Clear chain</button>
         </div>
         <div class="seq-chain-strip" id="seq-chain-strip">
@@ -1019,6 +1070,9 @@ body:not(.perf-mode) #perf-btn{display:none}
       <div class="modal-header">
         <span class="modal-title" id="seq-key-title">Choose a note</span>
         <button class="modal-close" onclick="closeSeqKeyModal()">✕</button>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--ink3);padding:4px 0 6px;text-align:center">
+        Dimmed notes are outside the current scale lock
       </div>
       <div class="seq-key-grid" id="seq-key-grid"></div>
       <div class="modal-actions">
@@ -1072,9 +1126,13 @@ body:not(.perf-mode) #perf-btn{display:none}
       <span class="modal-title">Saved Songs</span>
       <button class="modal-close" onclick="closeLibrary()">✕</button>
     </div>
+    <div class="song-notes-wrap">
+      <textarea id="song-notes" placeholder="Notes — key, tempo feel, what it's for…" maxlength="200"></textarea>
+    </div>
     <div class="song-list" id="song-list"></div>
     <div class="modal-actions">
       <button class="ctl-chip warm" onclick="loadSelectedSong()">Load Song</button>
+      <button class="ctl-chip" onclick="renameSong()">✏️ Rename</button>
       <button class="ctl-chip" onclick="exportAllJSON()">Export All</button>
       <button class="ctl-chip" onclick="closeLibrary()">Close</button>
     </div>
@@ -2034,37 +2092,61 @@ function toggleMetronome() {
   } else {
     btn.classList.remove('playing');
     btn.textContent = '♩';
-    if (metronomeInterval) { clearInterval(metronomeInterval); metronomeInterval = null; }
+    stopMetronomeScheduler();
     setStatus('Metronome off');
   }
 }
+
+// Precise lookahead scheduler — avoids setInterval drift entirely
+let metroSchedulerTimer = null;
+let metroNextTime = 0;
+const METRO_LOOKAHEAD = 0.1;   // seconds to schedule ahead
+const METRO_INTERVAL = 50;     // ms between scheduler runs
+
 function startMetronome() {
-  if (metronomeInterval) clearInterval(metronomeInterval);
-  const interval = 60000 / bpm;
-  metronomeInterval = setInterval(() => {
-    if (!isMetronome) return;
-    tickMetronome();
-  }, interval);
-  tickMetronome();
-}
-function tickMetronome() {
+  stopMetronomeScheduler();
   if (!actx) return;
-  const isBeat1 = beat % 4 === 0;
-  // Click sound
-  const now = actx.currentTime;
+  beat = 0;
+  metroNextTime = actx.currentTime;
+  scheduleMetroBeats();
+}
+
+function scheduleMetroBeats() {
+  while (metroNextTime < actx.currentTime + METRO_LOOKAHEAD) {
+    fireMetroBeat(metroNextTime, beat % 4 === 0);
+    beat++;
+    metroNextTime += 60.0 / bpm;
+  }
+  metroSchedulerTimer = setTimeout(scheduleMetroBeats, METRO_INTERVAL);
+}
+
+function fireMetroBeat(time, isDownbeat) {
   const osc = actx.createOscillator();
   const env = actx.createGain();
   osc.type = 'sine';
-  osc.frequency.value = isBeat1 ? 1200 : 800;
-  env.gain.setValueAtTime(isBeat1 ? 0.15 : 0.08, now);
-  env.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+  osc.frequency.value = isDownbeat ? 1200 : 800;
+  env.gain.setValueAtTime(isDownbeat ? 0.15 : 0.08, time);
+  env.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
   osc.connect(env); env.connect(masterGain);
-  osc.start(now); osc.stop(now + 0.05);
-  beat++;
-  // Flash the screen
-  document.getElementById('beat-flash').classList.add('flash');
-  setTimeout(() => document.getElementById('beat-flash').classList.remove('flash'), 60);
+  osc.start(time); osc.stop(time + 0.05);
+  // visual flash scheduled at audio time
+  const delay = Math.max(0, (time - actx.currentTime) * 1000);
+  setTimeout(() => {
+    const bf = document.getElementById('beat-flash');
+    if (bf) { bf.classList.add('flash'); setTimeout(() => bf.classList.remove('flash'), 60); }
+  }, delay);
 }
+
+function stopMetronomeScheduler() {
+  if (metroSchedulerTimer) { clearTimeout(metroSchedulerTimer); metroSchedulerTimer = null; }
+  if (metronomeInterval) { clearInterval(metronomeInterval); metronomeInterval = null; }
+}
+
+function tickMetronome() {
+  // kept for compatibility — now unused, scheduling handled by scheduleMetroBeats
+}
+
+function startMetronomeCompat() { startMetronome(); } // alias used by updateBPM
 
 function updateBPM() {
   bpm = +document.getElementById('bpm-slider').value;
@@ -2389,6 +2471,7 @@ function bindPointerNote(el, midi, type) {
 function collectState() {
   return {
     title: document.getElementById('song-title').value || 'Untitled Song',
+    notes: document.getElementById('song-notes')?.value || '',
     bpm: +document.getElementById('bpm-slider').value,
     volume: +document.getElementById('vol-slider').value,
     space: +document.getElementById('space-slider').value,
@@ -2527,17 +2610,19 @@ function applyState(state) {
 
 function saveSong() {
   const state = collectState();
+  // if library is open, grab notes from textarea; otherwise keep existing notes
+  const notesEl = document.getElementById('song-notes');
+  if (notesEl && document.getElementById('library-modal').classList.contains('open')) {
+    state.notes = notesEl.value || '';
+  }
   const key = 'groovestudio_songs';
   let songs = [];
   try { songs = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) {}
-  // Update existing or add new
   const idx = songs.findIndex(s => s.title === state.title);
   if (idx >= 0) songs[idx] = state;
   else songs.unshift(state);
   localStorage.setItem(key, JSON.stringify(songs));
   setStatus('✓ Saved "' + state.title + '"');
-
-  // brief visual confirmation on the Save button itself
   const btn = document.getElementById('save-btn');
   if (btn) {
     const original = btn.textContent;
@@ -2557,6 +2642,7 @@ function openLibrary() {
   const songs = loadSongs();
   const list = document.getElementById('song-list');
   list.innerHTML = '';
+  document.getElementById('song-notes').value = '';
   if (songs.length === 0) {
     list.innerHTML = '<div class="empty-library">No saved songs yet.<br>Dial in your sound and tap Save.</div>';
   } else {
@@ -2565,20 +2651,29 @@ function openLibrary() {
       if (i === 0) item.style.borderColor = 'var(--copper)';
       const date = new Date(song.timestamp).toLocaleDateString();
       item.innerHTML = `
-        <span class="song-item-title">${song.title || 'Untitled'}</span>
-        <span class="song-item-date">${date} · ${song.bpm||120}bpm</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="song-item-title">${song.title || 'Untitled'}</span>
+            <span class="song-item-date">${date} · ${song.bpm||120}bpm</span>
+          </div>
+          ${song.notes ? `<div class="song-item-notes">${song.notes}</div>` : ''}
+        </div>
         <button class="song-item-del" onclick="deleteSong(${i},event)">✕</button>
       `;
       item.addEventListener('click', () => {
         document.querySelectorAll('.song-item').forEach(s => s.style.borderColor = '');
         item.style.borderColor = 'var(--copper2)';
         selectedSongIdx = i;
+        document.getElementById('song-notes').value = song.notes || '';
       });
       list.appendChild(item);
     });
   }
   selectedSongIdx = songs.length > 0 ? 0 : -1;
-  if (songs.length > 0) list.firstChild.style.borderColor = 'var(--copper2)';
+  if (songs.length > 0) {
+    list.firstChild.style.borderColor = 'var(--copper2)';
+    document.getElementById('song-notes').value = songs[0].notes || '';
+  }
   document.getElementById('library-modal').classList.add('open');
 }
 function closeLibrary() { document.getElementById('library-modal').classList.remove('open'); }
@@ -2594,6 +2689,16 @@ function deleteSong(idx, e) {
   const songs = loadSongs();
   songs.splice(idx, 1);
   localStorage.setItem('groovestudio_songs', JSON.stringify(songs));
+  openLibrary();
+}
+function renameSong() {
+  const songs = loadSongs();
+  if (selectedSongIdx < 0 || !songs[selectedSongIdx]) { setStatus('Select a song to rename'); return; }
+  const newTitle = document.getElementById('song-title').value.trim();
+  if (!newTitle) { setStatus('Enter a new title in the song name field first'); return; }
+  songs[selectedSongIdx].title = newTitle;
+  localStorage.setItem('groovestudio_songs', JSON.stringify(songs));
+  setStatus('Renamed to "' + newTitle + '"');
   openLibrary();
 }
 
@@ -2864,8 +2969,69 @@ let seqMute = {}, seqSolo = {};
 let seqSavedGrooves = {};
 
 // ================================================================
-// STEP COUNT — dynamic 8 / 16 / 32 steps
+// CHAIN LOOP TOGGLE
 // ================================================================
+let chainLoop = false;
+function toggleChainLoop() {
+  chainLoop = !chainLoop;
+  const btn = document.getElementById('chain-loop-btn');
+  btn.textContent = chainLoop ? 'Loop: On' : 'Loop: Off';
+  btn.style.borderColor = chainLoop ? 'var(--copper2)' : '';
+  btn.style.color = chainLoop ? 'var(--copper3)' : '';
+}
+
+// ================================================================
+// TRANSPOSE — shift all pitched seq tracks by semitones
+// ================================================================
+function seqTranspose(semitones) {
+  const pitched = SEQ_PITCHED[seqMode];
+  for (let ti = 0; ti < SEQ_TRACK_LABELS[seqMode].length; ti++) {
+    if (!pitched[ti]) continue;
+    const cur = seqPitchIdx[seqMode][ti];
+    const next = Math.max(0, Math.min(SEQ_SCALE.length - 1, cur + semitones));
+    seqPitchIdx[seqMode][ti] = next;
+  }
+  buildSeqGrid();
+  setStatus('Transposed ' + (semitones > 0 ? '+' : '') + semitones + ' semitones');
+}
+
+// ================================================================
+// SCALE LOCK — filter key picker to notes in a chosen scale
+// ================================================================
+let seqScaleLock = 'all';
+const SCALE_INTERVALS = {
+  all:    [0,1,2,3,4,5,6,7,8,9,10,11],
+  major:  [0,2,4,5,7,9,11],
+  minor:  [0,2,3,5,7,8,10],
+  pent:   [0,2,4,7,9],
+  dorian: [0,2,3,5,7,9,10],
+};
+function setSeqScale(sc) {
+  seqScaleLock = sc;
+  document.querySelectorAll('.sl-btn').forEach(b => b.classList.toggle('sel', b.dataset.sc === sc));
+}
+function noteInScale(noteName) {
+  if (seqScaleLock === 'all') return true;
+  const NOTE = {'C':0,'C#':1,'D':2,'D#':3,'E':4,'F':5,'F#':6,'G':7,'G#':8,'A':9,'A#':10,'B':11};
+  const m = noteName.match(/^([A-G]#?)/);
+  if (!m) return true;
+  const semitone = NOTE[m[1]] % 12;
+  return SCALE_INTERVALS[seqScaleLock].includes(semitone);
+}
+
+// ================================================================
+// BPM PRESETS
+// ================================================================
+function setBPMPreset(val) {
+  document.getElementById('bpm-slider').value = val;
+  updateBPM();
+  setStatus('BPM → ' + val);
+}
+
+// ================================================================
+// SONG NOTES — saved with each song, shown in library
+// ================================================================
+// notes are stored in state.notes and shown in library items
 let seqStepCount = 16; // starts at 16 (matches original SEQ_STEPS const)
 
 function setSeqSteps(n) {
@@ -3364,14 +3530,28 @@ function chainTick() {
   document.querySelectorAll(`.seq-cell[data-i="${step}"]`).forEach(c => c.classList.add('playhead'));
   seqCurStep++;
 
-  // when we complete a full bar (16 steps), advance the chain if needed
+  // when we complete a full bar, advance the chain if needed
   if (seqCurStep % seqStepCount === 0) {
     chainBarsLeft--;
     if (chainBarsLeft <= 0) {
-      chainIdx = (chainIdx + 1) % seqChain.length;
-      loadChainEntry(chainIdx);
-      chainBarsLeft = seqChain[chainIdx].bars;
-      renderChainStrip();
+      const nextIdx = chainIdx + 1;
+      if (nextIdx >= seqChain.length) {
+        if (chainLoop) {
+          // loop back to start
+          chainIdx = 0;
+          loadChainEntry(0);
+          chainBarsLeft = seqChain[0].bars;
+          renderChainStrip();
+        } else {
+          stopChainPlay();
+          return;
+        }
+      } else {
+        chainIdx = nextIdx;
+        loadChainEntry(chainIdx);
+        chainBarsLeft = seqChain[chainIdx].bars;
+        renderChainStrip();
+      }
     }
   }
   seqTimerId = setTimeout(chainTick, seqStepMs());
@@ -3385,6 +3565,7 @@ function openSeqKeyModal(ti) {
   SEQ_SCALE.forEach((note, idx) => {
     const b = document.createElement('button'); b.textContent = note;
     if (idx === seqPitchIdx[seqMode][ti]) b.classList.add('cur');
+    if (!noteInScale(note)) b.classList.add('dimmed');
     b.onclick = () => {
       seqPitchIdx[seqMode][ti] = idx;
       [...g.children].forEach(c => c.classList.remove('cur'));
